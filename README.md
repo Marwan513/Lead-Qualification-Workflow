@@ -23,8 +23,8 @@ This project is a smart lead automation system built with [n8n](https://n8n.io),
 
 ## 🧠 Scoring Logic
 
-```latex
-\text{Score} = (\text{Interest} \times 0.5 + \text{Budget} \times 0.3 + \text{Company Size} \times 0.2) \times 100
+```
+Score = (Interest × 0.5 + Budget × 0.3 + Company Size × 0.2) × 100
 ```
 
 * **Hot Lead**: Score ≥ 70
