@@ -1,5 +1,7 @@
 # 🔥 Lead Qualification Workflow (n8n + Airtable + Slack)
 
+![Workflow Diagram](Workflow_Diagram.png)
+
 This project is a smart lead automation system built with [n8n](https://n8n.io), Airtable, and Slack — all using **free-tier tools**. It processes leads submitted via form, scores them based on defined logic, stores them in Airtable, and sends Slack alerts for high-value opportunities.
 
 ## 💡 Features
