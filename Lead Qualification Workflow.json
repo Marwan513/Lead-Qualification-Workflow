@@ -1,0 +1,493 @@
+{
+  "name": "REMWASTE",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "10a0502e-81e3-4568-82f0-b69deea51be6",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        0,
+        0
+      ],
+      "id": "f34638c1-590c-4546-b5bd-87fca53d2eb6",
+      "name": "Receive Lead Webhook",
+      "webhookId": "10a0502e-81e3-4568-82f0-b69deea51be6"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "e909e5fd-212a-476a-83a2-63f0644a3ee6",
+              "name": "Full name",
+              "value": "={{ $json.body.data.fields[0].value }}",
+              "type": "string"
+            },
+            {
+              "id": "e6b27b93-61ef-4c5a-aa37-521efd4d63af",
+              "name": "E-mail",
+              "value": "={{ $json.body.data.fields[1].value }}",
+              "type": "string"
+            },
+            {
+              "id": "e7277148-8e92-45a6-b0b4-a30c44dc8af8",
+              "name": "phone",
+              "value": "={{ $json.body.data.fields[2].value }}",
+              "type": "string"
+            },
+            {
+              "id": "28cf7dea-86b0-450b-8483-89f730861a98",
+              "name": "company size",
+              "value": "={{ $json.body.data.fields[3].value }}",
+              "type": "string"
+            },
+            {
+              "id": "08199388-9c59-4269-b4f9-d0eee07954ee",
+              "name": "budget",
+              "value": "={{ $json.body.data.fields[4].value }}",
+              "type": "string"
+            },
+            {
+              "id": "490e5889-f19d-4fc0-a7f4-be64f8d1e04d",
+              "name": "interest level",
+              "value": "={{\n(() => {\nconst selectedId = $json.body.data.fields[5].value[0];\nconst options = $json.body.data.fields[5].options;\nconst match = options.find(opt => opt.id === selectedId);\nreturn match ? match.text : \"Unknown\";\n})()\n}}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        200,
+        0
+      ],
+      "id": "a710648d-839c-4d6b-9b53-30ba79b0dbde",
+      "name": "Extract & Rename Form Fields"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "bb3c29cc-bee7-49a3-bfdb-266b6b2762c1",
+              "leftValue": "={{ $json['Full name'] }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "exists",
+                "singleValue": true
+              }
+            },
+            {
+              "id": "a27ebda6-ec56-4c02-bd2e-1305f7896e7b",
+              "leftValue": "={{ $json['E-mail'] }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "exists",
+                "singleValue": true
+              }
+            },
+            {
+              "id": "19010a0a-642d-490d-bce1-97f2ac0ed708",
+              "leftValue": "={{ $json.budget }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "exists",
+                "singleValue": true
+              }
+            },
+            {
+              "id": "d7976191-0821-4fb1-915e-463f40e344c5",
+              "leftValue": "={{ $json['interest level'] }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "exists",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        400,
+        0
+      ],
+      "id": "ccacd44d-bb61-411e-bec3-0a49c7644366",
+      "name": "Check Required Fields"
+    },
+    {
+      "parameters": {
+        "language": "python",
+        "pythonCode": "import math\n\ndef normalize(value, midpoint):\n    \"\"\"Smooth normalization to 0–1 using logistic scaling\"\"\"\n    return 1 / (1 + math.exp(- (value / midpoint - 1)))\n\n# Map categorical interest to numeric\ninterest_map = {\"Low\": 0.2, \"Medium\": 0.6, \"High\": 1.0}\nnorm_interest = interest_map.get(_input.first().json['interest level'], 0)\n\n# Normalize numeric values\nnorm_budget = normalize(int(_input.first().json.budget), midpoint=3000)       # assume 5,000 as avg budget\nnorm_company = normalize(int(_input.first().json['company size']), midpoint=50) # assume 100 employees as typical\n\n# Weights\nw_interest = 0.50\nw_budget = 0.30\nw_company = 0.20\n\n# Score calculation\nscore = (norm_interest * w_interest + norm_budget * w_budget + norm_company * w_company) * 100\nscore = round(score)\n\n# Categorize\nif score >= 70:\n    category = \"Hot\"\nelif score >= 40:\n    category = \"Warm\"\nelse:\n    category = \"Cold\"\n\n_input.first().json[\"Score\"] = category\nreturn _input.first()"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        640,
+        0
+      ],
+      "id": "52535743-eb79-46bf-a90a-8dcee0274d9c",
+      "name": "Calculate Lead Score (Python)"
+    },
+    {
+      "parameters": {
+        "operation": "create",
+        "base": {
+          "__rl": true,
+          "value": "appBxiUPFpY7uBSiP",
+          "mode": "list",
+          "cachedResultName": "Remwaste task",
+          "cachedResultUrl": "https://airtable.com/appBxiUPFpY7uBSiP"
+        },
+        "table": {
+          "__rl": true,
+          "value": "tblyyaiLQBuFI61jJ",
+          "mode": "list",
+          "cachedResultName": "Table 1",
+          "cachedResultUrl": "https://airtable.com/appBxiUPFpY7uBSiP/tblyyaiLQBuFI61jJ"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Full name": "={{ $json['Full name'] }}",
+            "E-mail": "={{ $json['E-mail'] }}",
+            "phone": "={{ $json.phone }}",
+            "company size": "={{ $json['company size'] }}",
+            "budget": "={{ $json.budget }}",
+            "interest level": "={{ $json['interest level'] }}",
+            "score": "={{ $json.Score }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "Full name",
+              "displayName": "Full name",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "E-mail",
+              "displayName": "E-mail",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "phone",
+              "displayName": "phone",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "company size",
+              "displayName": "company size",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "budget",
+              "displayName": "budget",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "interest level",
+              "displayName": "interest level",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "score",
+              "displayName": "score",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 2.1,
+      "position": [
+        840,
+        0
+      ],
+      "id": "7293af90-3d82-4366-b26b-7f9ced7f0fb1",
+      "name": "Store Lead in Airtable",
+      "credentials": {
+        "airtableTokenApi": {
+          "id": "Aromoa9aMIBspI56",
+          "name": "Airtable Personal Access Token account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "db289720-3e19-4ccf-810f-f7e7e7c4f9f1",
+              "leftValue": "={{ $json.fields.score }}",
+              "rightValue": "Hot",
+              "operator": {
+                "type": "string",
+                "operation": "equals",
+                "name": "filter.operator.equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        1000,
+        0
+      ],
+      "id": "a324d9d6-6428-4145-aa00-cbd29b4a769a",
+      "name": "Is Lead Hot?"
+    },
+    {
+      "parameters": {
+        "authentication": "oAuth2",
+        "select": "channel",
+        "channelId": {
+          "__rl": true,
+          "value": "C094BTVRPNG",
+          "mode": "list",
+          "cachedResultName": "all-remwaste-task"
+        },
+        "text": "=New Hot Lead: {{ $json.fields['Full name'] }}, Budget £{{ $json.fields.budget }}, Interest: {{ $json.fields['interest level'] }} – Check Airtable for details.",
+        "otherOptions": {
+          "includeLinkToWorkflow": false
+        }
+      },
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.3,
+      "position": [
+        1260,
+        0
+      ],
+      "id": "eb47f02f-3a6b-4d5d-8316-48169640cb99",
+      "name": "Send Slack Alert (Hot Lead)",
+      "webhookId": "b410c9ac-d08b-48f1-bcda-1fac2db6e1fd",
+      "credentials": {
+        "slackOAuth2Api": {
+          "id": "tFuUHGEmcLjRgDUX",
+          "name": "Slack account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "amount": 2,
+        "unit": "minutes"
+      },
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        1440,
+        0
+      ],
+      "id": "f6831888-852a-4e4e-8037-27b0bacfee12",
+      "name": "Wait 2 Minutes",
+      "webhookId": "51a50f31-f902-49e3-b214-76d09eab62ca"
+    },
+    {
+      "parameters": {
+        "authentication": "oAuth2",
+        "select": "channel",
+        "channelId": {
+          "__rl": true,
+          "value": "C094BTVRPNG",
+          "mode": "list",
+          "cachedResultName": "all-remwaste-task"
+        },
+        "text": "=⏱️ Follow-Up: Reminder to reach out to {{ $('Is Lead Hot?').item.json.fields['Full name'] }}. This lead is still hot – don’t lose the momentum!",
+        "otherOptions": {
+          "includeLinkToWorkflow": false
+        }
+      },
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.3,
+      "position": [
+        1620,
+        0
+      ],
+      "id": "e3990e51-52b3-40e5-9022-e47cb7700f15",
+      "name": "Send Follow-Up Reminder",
+      "webhookId": "b410c9ac-d08b-48f1-bcda-1fac2db6e1fd",
+      "credentials": {
+        "slackOAuth2Api": {
+          "id": "tFuUHGEmcLjRgDUX",
+          "name": "Slack account 2"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Receive Lead Webhook": {
+      "main": [
+        [
+          {
+            "node": "Extract & Rename Form Fields",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract & Rename Form Fields": {
+      "main": [
+        [
+          {
+            "node": "Check Required Fields",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Required Fields": {
+      "main": [
+        [
+          {
+            "node": "Calculate Lead Score (Python)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Calculate Lead Score (Python)": {
+      "main": [
+        [
+          {
+            "node": "Store Lead in Airtable",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Store Lead in Airtable": {
+      "main": [
+        [
+          {
+            "node": "Is Lead Hot?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Is Lead Hot?": {
+      "main": [
+        [
+          {
+            "node": "Send Slack Alert (Hot Lead)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Slack Alert (Hot Lead)": {
+      "main": [
+        [
+          {
+            "node": "Wait 2 Minutes",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait 2 Minutes": {
+      "main": [
+        [
+          {
+            "node": "Send Follow-Up Reminder",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "d86f3151-87fb-40e1-9f6b-f55a7c7be785",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "1b1bffcfbc7511a53cdaee530963b7bce0902fb7691d845da879c558d7598254"
+  },
+  "id": "ZmtOf62awYPl413W",
+  "tags": []
+}
